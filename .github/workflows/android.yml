@@ -23,15 +23,15 @@ jobs:
       - name: Accept SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
-      - name: Build web assets
+      - name: Install deps
         working-directory: clients/mobile
-        run: |
-          npm ci || npm install
-          npm run build
+        run: npm install -g npm@11 && npm install --no-audit --no-fund
 
       - name: Capacitor sync
         working-directory: clients/mobile
-        run: npx cap sync android
+        run: |
+          npm run build
+          npx cap sync android
 
       - name: Build APK
         working-directory: clients/mobile/android
