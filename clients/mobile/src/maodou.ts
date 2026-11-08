@@ -36,7 +36,7 @@ export async function initCore(): Promise<void> {
   try {
     const { data } = await Filesystem.readFile({
       path: DB_FILE,
-      directory: Directory.Data,
+      directory: Directory.Documents,
     });
     const bytes = base64ToBytes(data);
     repository = await SqlJsNoteRepository.importBytes(bytes, clock);
@@ -51,7 +51,7 @@ export async function persist(): Promise<void> {
   const bytes = repository.exportBytes();
   await Filesystem.writeFile({
     path: DB_FILE,
-    directory: Directory.Data,
+    directory: Directory.Documents,
     data: bytesToBase64(bytes),
     recursive: true,
   });
