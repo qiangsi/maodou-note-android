@@ -1,5 +1,6 @@
 import './style.css';
 import * as maodou from './maodou';
+import { saveSharePng } from './share-export';
 
 interface Card {
   id: string;
@@ -58,13 +59,19 @@ function toast(msg: string): void {
 
 let tagFilter: string | null = null;
 
+/** 渲染列表时缓存完整 Card 对象，详情弹层直接按 id 取用，避免重复请求。 */
+let cardsById = new Map<string, Card>();
+
+/** 分享长图模板列表，启动时预加载，详情弹层内复用。 */
+let shareTemplates: { id: string; name: string; description: string }[] = [];
+
 function renderCard(card: Card): string {
   const tags = card.tags
     .map((t) => `<span class="tag" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</span>`)
     .join('');
   const badge = card.status === 'conflict' ? '<span class="tag">⚠ 冲突</span>' : '';
   return `
-    <div class="card ${card.status === 'conflict' ? 'conflict' : ''}">
+    <div class="card ${card.status === 'conflict' ? 'conflict' : ''}" data-card="${card.id}">
       <div class="body">${escapeHtml(card.content)}</div>
       <div class="tags">${tags}${badge}</div>
       <div class="meta">
@@ -79,6 +86,10 @@ async function renderHome(): Promise<void> {
   const cards = tagFilter
     ? await maodou.search(null, [tagFilter])
     : await maodou.listCards();
+  // 缓存完整 Card 对象，详情弹层按 id 取用。显式标注类型，确保上游类型退化时仍可通过严格检查。
+  cardsById = new Map<string, Card>(
+    cards.map((c: Card) => [c.id, c] as [string, Card]),
+  );
   const list = cards.length
     ? cards.map(renderCard).join('')
     : '<div class="empty">还没有卡片，点右下角 ＋ 写一条吧</div>';
@@ -100,15 +111,20 @@ async function renderHome(): Promise<void> {
     });
   }
   pane.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      try {
-        await maodou.deleteCard(btn.getAttribute('data-del')!);
-      } catch (e) {
-        toast(`删除失败：${(e as Error)?.message ?? e}`);
-        return;
-      }
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await maodou.deleteCard(btn.getAttribute('data-del')!);
       await renderHome();
       toast('已删除（同步后其他端也会隐藏）');
+    });
+  });
+
+  // 点击卡片正文/区域打开详情弹层（删除按钮已 stopPropagation，不会触发）。
+  pane.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-card')!;
+      const card = cardsById.get(id);
+      if (card) openDetail(card);
     });
   });
 }
@@ -192,6 +208,96 @@ function saveSettings(s: Settings): void {
   localStorage.setItem('maodou-settings', JSON.stringify(s));
 }
 
+/** 预加载分享模板列表（移动端为同步方法，失败则降级为空）。 */
+function loadShareTemplates(): void {
+  try {
+    shareTemplates = maodou.listShareTemplates();
+  } catch {
+    shareTemplates = [];
+  }
+}
+
+/**
+ * 打开卡片详情弹层（从底部弹出的 sheet）：展示正文（只读）、#标签、创建时间，
+ * 以及"分享长图"区（模板切换、长图预览、导出 PNG）。
+ */
+function openDetail(card: Card): void {
+  const mask = document.createElement('div');
+  mask.className = 'sheet-mask';
+  mask.innerHTML = `
+    <div class="sheet sheet--scroll">
+      <div class="sheet-head">
+        <button class="ghost" id="detail-close">关闭</button>
+      </div>
+      <div class="detail-body">${escapeHtml(card.content)}</div>
+      <div class="detail-tags">${
+        card.tags.length
+          ? card.tags.map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')
+          : '<span class="detail-empty">无标签</span>'
+      }</div>
+      <div class="detail-time">创建于 ${fmtTime(card.createdAt)}</div>
+      <div class="share">
+        <div class="share-title">分享长图</div>
+        <div class="share-templates" id="share-templates"></div>
+        <div class="share-preview" id="share-preview"></div>
+        <button class="primary" id="share-export">导出 PNG</button>
+      </div>
+    </div>`;
+  document.body.appendChild(mask);
+
+  const close = () => mask.remove();
+  mask.querySelector<HTMLButtonElement>('#detail-close')!.addEventListener('click', close);
+  mask.addEventListener('click', (e) => {
+    if (e.target === mask) close();
+  });
+
+  const templatesBox = mask.querySelector<HTMLDivElement>('#share-templates')!;
+  const preview = mask.querySelector<HTMLDivElement>('#share-preview')!;
+  const exportBtn = mask.querySelector<HTMLButtonElement>('#share-export')!;
+
+  // 默认选中第一个模板（通常为 paper）。
+  let currentTemplate = shareTemplates.length ? shareTemplates[0].id : 'paper';
+  let currentSvg = '';
+
+  // 渲染模板选择按钮并高亮当前选中项。
+  const renderTemplates = (): void => {
+    templatesBox.innerHTML = shareTemplates
+      .map(
+        (t) =>
+          `<button class="tpl-btn ${t.id === currentTemplate ? 'active' : ''}" data-tpl="${escapeHtml(
+            t.id,
+          )}" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}</button>`,
+      )
+      .join('');
+    templatesBox.querySelectorAll<HTMLButtonElement>('[data-tpl]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentTemplate = btn.getAttribute('data-tpl')!;
+        renderTemplates();
+        generatePreview();
+      });
+    });
+  };
+
+  // 生成当前模板的长图 SVG，缓存到 currentSvg 并刷新预览（移动端为同步方法）。
+  const generatePreview = (): void => {
+    currentSvg = maodou.generateShareImage(card.id, currentTemplate);
+    preview.innerHTML = currentSvg;
+  };
+
+  exportBtn.addEventListener('click', async () => {
+    if (!currentSvg) return;
+    try {
+      await saveSharePng(currentSvg, `maodou-${card.id}.png`);
+      toast('已保存到 文档/maodou');
+    } catch (err) {
+      toast(`导出失败：${(err as Error).message}`);
+    }
+  });
+
+  renderTemplates();
+  generatePreview();
+}
+
 function switchTab(name: 'home' | 'tags' | 'settings'): void {
   document
     .querySelectorAll('.tab-btn')
@@ -230,13 +336,7 @@ function openComposer(): void {
       close();
       return;
     }
-    try {
-      await maodou.createCard(content, parseTags(content));
-    } catch (e) {
-      toast(`保存失败：${(e as Error)?.message ?? e}`);
-      console.error('createCard failed', e);
-      return;
-    }
+    await maodou.createCard(content, parseTags(content));
     close();
     await renderHome();
     toast('已保存（离线）');
@@ -254,12 +354,7 @@ function bindShell(): void {
 
 window.addEventListener('DOMContentLoaded', async () => {
   bindShell();
-  try {
-    await maodou.initCore();
-    await renderHome();
-  } catch (e) {
-    const pane = document.querySelector<HTMLElement>('#tab-home')!;
-    pane.innerHTML = `<div class="empty">初始化失败：${escapeHtml((e as Error)?.message ?? String(e))}</div>`;
-    console.error('initCore failed', e);
-  }
+  await maodou.initCore();
+  loadShareTemplates();
+  await renderHome();
 });
