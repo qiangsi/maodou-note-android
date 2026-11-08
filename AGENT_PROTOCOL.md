@@ -33,6 +33,7 @@
 | `clients/mobile/android/app/build.gradle` | 末尾 `apply from: "capacitor.build.gradle"`；含 `androidx.appcompat` 依赖 | 同上（插件接线）；BridgeActivity 编译需要 AppCompatActivity |
 | `clients/mobile/android/gradle.properties` | `android.useAndroidX=true` | 缺了 checkDebugAarMetadata 直接失败 |
 | `clients/mobile/node-fs-stub.ts`（及其导出） | 存在于 `clients/mobile/src/`，导出 existsSync/readFileSync/writeFileSync/mkdirSync/readdirSync/statSync/unlinkSync/dirname/join | 打包器解析内核对 node 内置模块的静态引用必需 |
+| `clients/mobile/src/share-export.ts` + `clients/mobile/package.json` | `directory: Directory.Data`（**不是** Documents）；`@capacitor/share` 依赖保留在 package.json；导出 `sharePng()` 拉起系统分享面板 | Documents 写入会被权限拒（同 maodou.ts）；缺 `@capacitor/share` 依赖 → `cap sync` 不接线 → APK 报 `"Share" plugin is not implemented` |
 | `.github/workflows/android.yml` | 存在；Gradle pin 8.5；npm install 步骤同时装**根目录**和 `clients/mobile` 依赖 | runner 自带 Gradle 9 不兼容 AGP 8.2；sqlite-wasm 经 `file:` 依赖 hoist 到根 node_modules |
 
 ## 构建与发布流程
