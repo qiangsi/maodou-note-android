@@ -254,6 +254,12 @@ function bindShell(): void {
 
 window.addEventListener('DOMContentLoaded', async () => {
   bindShell();
-  await maodou.initCore();
-  await renderHome();
+  try {
+    await maodou.initCore();
+    await renderHome();
+  } catch (e) {
+    const pane = document.querySelector<HTMLElement>('#tab-home')!;
+    pane.innerHTML = `<div class="empty">初始化失败：${escapeHtml((e as Error)?.message ?? String(e))}</div>`;
+    console.error('initCore failed', e);
+  }
 });
