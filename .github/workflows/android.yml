@@ -24,7 +24,11 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - name: Install deps
-        run: npm install -g npm@11 && npm install --no-audit --no-fund
+        run: |
+          npm install -g npm@11
+          # 防止 lockfile 引入内网镜像 URL（历史上多次发生）
+          find . -name package-lock.json -not -path "*/node_modules/*" -exec sed -i 's|http://mirrors.tencentyun.com/npm|https://registry.npmjs.org|g' {} \;
+          npm install --no-audit --no-fund
       - name: Install mobile deps
         working-directory: clients/mobile
         run: npm install --no-audit --no-fund
