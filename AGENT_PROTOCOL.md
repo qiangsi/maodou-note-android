@@ -51,4 +51,5 @@ cd clients/mobile && npm run build && npx cap sync android
 ## 沟通
 
 - 有跨会话需要对方知道的决策 → 写进本文件，不要只写在自己的会话记忆里。
+- **Windows 端兄弟仓库 `qiangsi/maodou-note-windows`**：同规约、不同清单（pnpm workflow / publish:null / vite `node` conditions 等），见其 `AGENT_PROTOCOL.md`。内核（`src/`）改动两边都要测试全绿。
 - 改动构建产物（`assets/public/`）会频繁造成合并冲突：能不提交就不提交（CI 会重新生成）。
