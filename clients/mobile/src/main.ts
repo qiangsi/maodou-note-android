@@ -158,9 +158,9 @@ async function renderSettings(): Promise<void> {
       <label>服务器地址</label>
       <input id="s-url" value="${escapeHtml(s.serverBaseUrl)}" placeholder="https://dav.example.com" />
       <label>用户名</label>
-      <input id="s-user" value="${escapeHtml(s.username)}" placeholder="可选" />
+      <input id="s-user" value="${escapeHtml(s.username)}" placeholder="坚果云注册邮箱" />
       <label>密码</label>
-      <input id="s-pass" type="password" value="${escapeHtml(s.password)}" placeholder="可选" />
+      <input id="s-pass" type="password" value="${escapeHtml(s.password)}" placeholder="应用密码（非登录密码）" />
       <div class="row" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;">
         <button class="ghost" id="s-save">保存</button>
         <button class="primary" id="s-sync">立即同步</button>
@@ -178,11 +178,26 @@ async function renderSettings(): Promise<void> {
   });
   pane.querySelector<HTMLButtonElement>('#s-sync')!.addEventListener('click', async () => {
     const status = pane.querySelector<HTMLDivElement>('#s-status')!;
-    const cfg = loadSettings();
+    // 读输入框当前值（而非上次保存的配置），避免"明明填了却提示没填"。
+    const cfg: Settings = {
+      serverBaseUrl: pane.querySelector<HTMLInputElement>('#s-url')!.value.trim(),
+      username: pane.querySelector<HTMLInputElement>('#s-user')!.value.trim(),
+      password: pane.querySelector<HTMLInputElement>('#s-pass')!.value,
+    };
+    // 逐项校验，提示与缺失字段一一对应。
     if (!cfg.serverBaseUrl) {
       status.textContent = '请先填写 WebDAV 服务器地址';
       return;
     }
+    if (!cfg.username) {
+      status.textContent = '请先填写用户名（坚果云为注册邮箱）';
+      return;
+    }
+    if (!cfg.password) {
+      status.textContent = '请先填写密码：坚果云需使用「应用密码」，在网页端 账户信息→安全选项→第三方应用管理 生成，登录密码无效';
+      return;
+    }
+    saveSettings(cfg); // 同步前静默保存当前输入，无需先点"保存"
     status.textContent = '同步中…';
     try {
       const r = await maodou.runSync(cfg);
