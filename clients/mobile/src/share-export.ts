@@ -1,16 +1,21 @@
 /**
  * 分享长图导出工具（Capacitor WebView 环境）。
  *
- * 内核 generateShareSvg() 产出矢量 SVG 长图；本文件负责把它栅格化为 PNG 并写入设备文档目录
- * （Android 上即 Documents/maodou，可在文件管理器或相册导入中访问）。
+ * 内核 generateShareSvg() 产出矢量 SVG 长图；本文件负责把它栅格化为 PNG 写入
+ * 应用数据目录（Directory.Data），并通过 @capacitor/share 拉起系统分享面板把图发出去。
  *
- * 用法（例如在卡片详情的"分享"按钮里）：
- *   import { generateShareImage } from './maodou';
- *   const svg = generateShareImage(noteId, 'paper');
- *   await saveSharePng(svg, `maodou-${noteId}.png`);
+ * ⚠️ 为什么用 Directory.Data 而不是 Directory.Documents：
+ * Documents 是公共存储，Android 需运行时权限而 App 未申请 → writeFile 被拒。
+ * 与 maodou.ts 持久化数据库保持同一策略（见 AGENT_PROTOCOL.md 不得回滚清单）。
+ *
+ * 用法（卡片详情的"分享"按钮里）：
+ *   const filename = `maodou-${noteId}.png`;
+ *   await saveSharePng(svg, filename); // 栅格化 + 写入 Data 目录
+ *   await sharePng(filename);          // 拉起系统分享面板
  */
 
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 /** 把 SVG 字符串栅格化为 PNG dataURL（默认为 2 倍清晰度）。 */
 export function svgToPngDataUrl(svg: string, scale = 2): Promise<string> {
@@ -54,14 +59,20 @@ function dataUrlToBase64(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
-/** 栅格化并写入设备文档目录，返回保存路径。 */
+/** 栅格化并写入应用数据目录（Directory.Data），返回文件名。 */
 export async function saveSharePng(svg: string, filename: string): Promise<string> {
   const dataUrl = await svgToPngDataUrl(svg, 2);
   await Filesystem.writeFile({
     path: filename,
-    directory: Directory.Documents,
+    directory: Directory.Data,
     data: dataUrlToBase64(dataUrl),
     recursive: true,
   });
   return filename;
+}
+
+/** 拉起系统分享面板，把已保存的 PNG 发给任意 App（微信/朋友圈等）。 */
+export async function sharePng(filename: string): Promise<void> {
+  const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Data });
+  await Share.share({ files: [uri] });
 }
