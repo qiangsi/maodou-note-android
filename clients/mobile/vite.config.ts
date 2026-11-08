@@ -14,6 +14,6 @@ export default defineConfig({
       'node:path': fileURLToPath(new URL('./src/node-fs-stub.ts', import.meta.url)),
       'node:module': fileURLToPath(new URL('./src/node-fs-stub.ts', import.meta.url)),
     },
-    conditions: ['node', 'import', 'module', 'browser', 'default'],
+    conditions: ['import', 'module', 'browser', 'default'],
   },
 });
