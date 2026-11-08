@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>毛豆笔记</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">🟢 毛豆笔记</header>
+      <main class="tab-content">
+        <section id="tab-home" class="tab-pane"></section>
+        <section id="tab-tags" class="tab-pane hidden"></section>
+        <section id="tab-settings" class="tab-pane hidden"></section>
+      </main>
+      <button id="fab" class="fab">＋</button>
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="home">🏠<span>卡片流</span></button>
+        <button class="tab-btn" data-tab="tags">🏷️<span>标签</span></button>
+        <button class="tab-btn" data-tab="settings">⚙️<span>设置</span></button>
+      </nav>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

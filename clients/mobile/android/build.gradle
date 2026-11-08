@@ -1,0 +1,22 @@
+// 顶层 Gradle 构建脚本（Capacitor 生成的默认值）。运行 `npx cap add android` 会自动补全 Gradle Wrapper。
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    ext {
+        compileSdkVersion = 34
+        minSdkVersion = 26
+        targetSdkVersion = 34
+    }
+}
