@@ -101,12 +101,7 @@ async function renderHome(): Promise<void> {
   }
   pane.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      try {
-        await maodou.deleteCard(btn.getAttribute('data-del')!);
-      } catch (e) {
-        toast(`删除失败：${(e as Error)?.message ?? e}`);
-        return;
-      }
+      await maodou.deleteCard(btn.getAttribute('data-del')!);
       await renderHome();
       toast('已删除（同步后其他端也会隐藏）');
     });
@@ -230,13 +225,7 @@ function openComposer(): void {
       close();
       return;
     }
-    try {
-      await maodou.createCard(content, parseTags(content));
-    } catch (e) {
-      toast(`保存失败：${(e as Error)?.message ?? e}`);
-      console.error('createCard failed', e);
-      return;
-    }
+    await maodou.createCard(content, parseTags(content));
     close();
     await renderHome();
     toast('已保存（离线）');
