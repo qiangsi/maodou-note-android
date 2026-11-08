@@ -1,6 +1,6 @@
 import './style.css';
 import * as maodou from './maodou';
-import { saveSharePng } from './share-export';
+import { saveSharePng, sharePng } from './share-export';
 
 interface Card {
   id: string;
@@ -287,8 +287,15 @@ function openDetail(card: Card): void {
   exportBtn.addEventListener('click', async () => {
     if (!currentSvg) return;
     try {
-      await saveSharePng(currentSvg, `maodou-${card.id}.png`);
-      toast('已保存到 文档/maodou');
+      const filename = `maodou-${card.id}.png`;
+      await saveSharePng(currentSvg, filename);
+      // 分享面板被用户取消不算失败；PNG 已保存在应用数据目录。
+      try {
+        await sharePng(filename);
+        toast('已拉起分享面板');
+      } catch {
+        toast('长图已保存（未分享）');
+      }
     } catch (err) {
       toast(`导出失败：${(err as Error).message}`);
     }
