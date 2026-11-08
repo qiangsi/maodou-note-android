@@ -1,8 +1,0 @@
-{
-	"appId": "com.maodou.notes",
-	"appName": "毛豆笔记",
-	"webDir": "dist",
-	"server": {
-		"androidScheme": "https"
-	}
-}

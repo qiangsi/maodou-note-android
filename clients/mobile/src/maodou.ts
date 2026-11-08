@@ -7,6 +7,8 @@ import {
   HttpWebDavClient,
   ConflictResolver,
   SystemClock,
+  generateShareSvg,
+  listTemplates,
 } from 'maodou-notes';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
@@ -113,4 +115,20 @@ export async function runSync(settings: {
   const result = await engine.sync();
   await persist();
   return result;
+}
+
+export function listShareTemplates(): { id: string; name: string; description: string }[] {
+  return listTemplates();
+}
+
+/** 把单条笔记渲染为分享长图（SVG 字符串）。 */
+export function generateShareImage(
+  noteId: string,
+  templateId: string,
+): string {
+  const note = repository.get(noteId);
+  if (!note) {
+    throw new Error(`note not found: ${noteId}`);
+  }
+  return generateShareSvg(note, { templateId });
 }
