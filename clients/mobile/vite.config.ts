@@ -11,6 +11,8 @@ export default defineConfig({
   resolve: {
     alias: {
       'node:fs': fileURLToPath(new URL('./src/node-fs-stub.ts', import.meta.url)),
+      'node:path': fileURLToPath(new URL('./src/node-fs-stub.ts', import.meta.url)),
+      'node:module': fileURLToPath(new URL('./src/node-fs-stub.ts', import.meta.url)),
     },
     conditions: ['node', 'import', 'module', 'browser', 'default'],
   },

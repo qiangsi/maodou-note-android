@@ -26,4 +26,5 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(':capacitor-android')
+    implementation "androidx.core:core:1.12.0"
 }
